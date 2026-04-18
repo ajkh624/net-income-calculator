@@ -109,8 +109,30 @@
           <input id="mimeticsNonTaxableMonthly" type="number" step="10000" value="400000" />
         </div>
         <div class="field">
+          <label for="mimeticsTaxMode">미메틱스 소득세 방식</label>
+          <select id="mimeticsTaxMode">
+            <option value="manual" selected>실제 급여명세서 값 사용</option>
+            <option value="auto">자동 계산값 사용</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="mimeticsManualTax">미메틱스 월 급여소득세 직접입력 (원)</label>
+          <input id="mimeticsManualTax" type="number" step="10" value="470380" />
+        </div>
+        <div class="field">
           <label for="pnpNonTaxableMonthly">피앤피 월 비과세 금액 (원)</label>
           <input id="pnpNonTaxableMonthly" type="number" step="10000" value="200000" />
+        </div>
+        <div class="field">
+          <label for="pnpTaxMode">피앤피 소득세 방식</label>
+          <select id="pnpTaxMode">
+            <option value="auto" selected>자동 계산값 사용</option>
+            <option value="manual">실제 급여명세서 값 사용</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="pnpManualTax">피앤피 월 급여소득세 직접입력 (원)</label>
+          <input id="pnpManualTax" type="number" step="10" value="0" />
         </div>
 
         <div class="section-title">부수입 금액 (월 기준, 원)</div>
@@ -210,7 +232,8 @@
                 <tr><td>건강보험</td><td id="mimeticsHealthDetail">0원</td></tr>
                 <tr><td>장기요양보험</td><td id="mimeticsCareDetail">0원</td></tr>
                 <tr><td>고용보험</td><td id="mimeticsEmploymentDetail">0원</td></tr>
-                <tr><td>근로소득세(단순 추정)</td><td id="mimeticsTaxDetail">0원</td></tr>
+                <tr><td>근로소득세</td><td id="mimeticsTaxDetail">0원</td></tr>
+                <tr><td>자동계산 기준 소득세</td><td id="mimeticsAutoTaxDetail">0원</td></tr>
                 <tr><td><strong>월 실수령액</strong></td><td id="mimeticsNetDetail"><strong>0원</strong></td></tr>
               </tbody>
             </table>
@@ -226,7 +249,8 @@
                 <tr><td>건강보험</td><td id="pnpHealthDetail">0원</td></tr>
                 <tr><td>장기요양보험</td><td id="pnpCareDetail">0원</td></tr>
                 <tr><td>고용보험</td><td id="pnpEmploymentDetail">0원</td></tr>
-                <tr><td>근로소득세(단순 추정)</td><td id="pnpTaxDetail">0원</td></tr>
+                <tr><td>근로소득세</td><td id="pnpTaxDetail">0원</td></tr>
+                <tr><td>자동계산 기준 소득세</td><td id="pnpAutoTaxDetail">0원</td></tr>
                 <tr><td><strong>월 실수령액</strong></td><td id="pnpNetDetail"><strong>0원</strong></td></tr>
               </tbody>
             </table>
@@ -324,7 +348,7 @@
       return Math.max(0, taxableIncome * bracket.rate - bracket.deduction);
     }
 
-    function calcSalaryNet(annualSalary, annualNonTaxable) {
+    function calcSalaryNet(annualSalary, annualNonTaxable, taxMode = 'auto', manualTax = 0) {
       const monthlyGross = annualSalary / 12;
       const monthlyTaxableSalary = Math.max(0, monthlyGross - (annualNonTaxable / 12));
       const pension = roundDown10(monthlyTaxableSalary * RATES.nationalPensionEmployee);
@@ -334,10 +358,11 @@
 
       const annualTaxableEarnedIncome = Math.max(0, annualSalary - annualNonTaxable);
       const annualIncomeTax = calcProgressiveTax(getAnnualTaxBase(annualTaxableEarnedIncome));
-      const monthlyIncomeTax = roundDown10(annualIncomeTax / 12);
+      const autoMonthlyIncomeTax = roundDown10(annualIncomeTax / 12);
+      const monthlyIncomeTax = taxMode === 'manual' ? Number(manualTax || 0) : autoMonthlyIncomeTax;
       const netMonthly = monthlyGross - pension - health - care - employment - monthlyIncomeTax;
 
-      return { monthlyGross, pension, health, care, employment, monthlyIncomeTax, netMonthly };
+      return { monthlyGross, pension, health, care, employment, monthlyIncomeTax, autoMonthlyIncomeTax, netMonthly };
     }
 
     function calcSingleSideIncome(monthlyGross, expenseRate, residentTaxRate) {
@@ -376,7 +401,11 @@
       const mimeticsSalary = Number($('mimeticsSalary').value || 0);
       const pnpSalary = Number($('pnpSalary').value || 0);
       const mimeticsNonTaxableMonthly = Number($('mimeticsNonTaxableMonthly').value || 0);
+      const mimeticsTaxMode = $('mimeticsTaxMode').value;
+      const mimeticsManualTax = Number($('mimeticsManualTax').value || 0);
       const pnpNonTaxableMonthly = Number($('pnpNonTaxableMonthly').value || 0);
+      const pnpTaxMode = $('pnpTaxMode').value;
+      const pnpManualTax = Number($('pnpManualTax').value || 0);
       const blogIncome = Number($('blogIncome').value || 0);
       const lectureIncome = Number($('lectureIncome').value || 0);
       const towncarIncome = Number($('towncarIncome').value || 0);
@@ -389,8 +418,8 @@
       const targetNet = Number($('targetNet').value || 7000000);
       const simulationMax = Number($('simulationMax').value || 5000000);
 
-      const mimeticsCalc = calcSalaryNet(mimeticsSalary, mimeticsNonTaxableMonthly * 12);
-      const pnpCalc = calcSalaryNet(pnpSalary, pnpNonTaxableMonthly * 12);
+      const mimeticsCalc = calcSalaryNet(mimeticsSalary, mimeticsNonTaxableMonthly * 12, mimeticsTaxMode, mimeticsManualTax);
+      const pnpCalc = calcSalaryNet(pnpSalary, pnpNonTaxableMonthly * 12, pnpTaxMode, pnpManualTax);
       const blogCalc = calcSingleSideIncome(blogIncome, blogExpenseRate, residentTaxRate);
       const lectureCalc = calcSingleSideIncome(lectureIncome, lectureExpenseRate, residentTaxRate);
       const towncarCalc = calcSingleSideIncome(towncarIncome, towncarExpenseRate, residentTaxRate);
@@ -436,6 +465,7 @@
       $('mimeticsCareDetail').textContent = fmt(mimeticsCalc.care);
       $('mimeticsEmploymentDetail').textContent = fmt(mimeticsCalc.employment);
       $('mimeticsTaxDetail').textContent = fmt(mimeticsCalc.monthlyIncomeTax);
+      $('mimeticsAutoTaxDetail').textContent = fmt(mimeticsCalc.autoMonthlyIncomeTax);
       $('mimeticsNetDetail').textContent = fmt(mimeticsCalc.netMonthly);
 
       $('pnpGrossDetail').textContent = fmt(pnpCalc.monthlyGross);
@@ -445,6 +475,7 @@
       $('pnpCareDetail').textContent = fmt(pnpCalc.care);
       $('pnpEmploymentDetail').textContent = fmt(pnpCalc.employment);
       $('pnpTaxDetail').textContent = fmt(pnpCalc.monthlyIncomeTax);
+      $('pnpAutoTaxDetail').textContent = fmt(pnpCalc.autoMonthlyIncomeTax);
       $('pnpNetDetail').textContent = fmt(pnpCalc.netMonthly);
 
       $('mimeticsGrossRow').textContent = fmt(mimeticsCalc.monthlyGross);
@@ -530,7 +561,7 @@
     }
 
     [
-      'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','pnpNonTaxableMonthly','blogIncome','lectureIncome','towncarIncome','otherIncome',
+      'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','mimeticsTaxMode','mimeticsManualTax','pnpNonTaxableMonthly','pnpTaxMode','pnpManualTax','blogIncome','lectureIncome','towncarIncome','otherIncome',
       'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
