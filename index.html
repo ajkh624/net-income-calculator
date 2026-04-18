@@ -105,8 +105,12 @@
           <input id="pnpSalary" type="number" step="100000" value="10000000" />
         </div>
         <div class="field">
-          <label for="nonTaxableMonthly">월 비과세 금액 (원)</label>
-          <input id="nonTaxableMonthly" type="number" step="10000" value="200000" />
+          <label for="mimeticsNonTaxableMonthly">미메틱스 월 비과세 금액 (원)</label>
+          <input id="mimeticsNonTaxableMonthly" type="number" step="10000" value="400000" />
+        </div>
+        <div class="field">
+          <label for="pnpNonTaxableMonthly">피앤피 월 비과세 금액 (원)</label>
+          <input id="pnpNonTaxableMonthly" type="number" step="10000" value="200000" />
         </div>
 
         <div class="section-title">부수입 금액 (월 기준, 원)</div>
@@ -341,7 +345,8 @@
     function render() {
       const mimeticsSalary = Number($('mimeticsSalary').value || 0);
       const pnpSalary = Number($('pnpSalary').value || 0);
-      const nonTaxableMonthly = Number($('nonTaxableMonthly').value || 0);
+      const mimeticsNonTaxableMonthly = Number($('mimeticsNonTaxableMonthly').value || 0);
+      const pnpNonTaxableMonthly = Number($('pnpNonTaxableMonthly').value || 0);
       const blogIncome = Number($('blogIncome').value || 0);
       const lectureIncome = Number($('lectureIncome').value || 0);
       const towncarIncome = Number($('towncarIncome').value || 0);
@@ -354,13 +359,8 @@
       const targetNet = Number($('targetNet').value || 7000000);
       const simulationMax = Number($('simulationMax').value || 5000000);
 
-      const totalAnnualSalary = mimeticsSalary + pnpSalary;
-      const totalNonTaxableAnnual = nonTaxableMonthly * 12;
-      const mimeticsShare = totalAnnualSalary > 0 ? mimeticsSalary / totalAnnualSalary : 0;
-      const pnpShare = totalAnnualSalary > 0 ? pnpSalary / totalAnnualSalary : 0;
-
-      const mimeticsCalc = calcSalaryNet(mimeticsSalary, totalNonTaxableAnnual * mimeticsShare);
-      const pnpCalc = calcSalaryNet(pnpSalary, totalNonTaxableAnnual * pnpShare);
+      const mimeticsCalc = calcSalaryNet(mimeticsSalary, mimeticsNonTaxableMonthly * 12);
+      const pnpCalc = calcSalaryNet(pnpSalary, pnpNonTaxableMonthly * 12);
       const blogCalc = calcSingleSideIncome(blogIncome, blogExpenseRate, residentTaxRate);
       const lectureCalc = calcSingleSideIncome(lectureIncome, lectureExpenseRate, residentTaxRate);
       const towncarCalc = calcSingleSideIncome(towncarIncome, towncarExpenseRate, residentTaxRate);
@@ -480,7 +480,7 @@
     }
 
     [
-      'mimeticsSalary','pnpSalary','nonTaxableMonthly','blogIncome','lectureIncome','towncarIncome','otherIncome',
+      'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','pnpNonTaxableMonthly','blogIncome','lectureIncome','towncarIncome','otherIncome',
       'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
