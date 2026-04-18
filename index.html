@@ -295,6 +295,24 @@
           <div class="desc">x축은 추가 부수입(월 세전), y축은 최종 월 실수령액입니다.</div>
         </div>
 
+        <div class="panel" style="margin-top:16px;">
+          <h2>내년 종합소득세 예측 시뮬레이션</h2>
+          <table>
+            <tbody>
+              <tr><td>예상 연간 근로소득(세전)</td><td id="forecastEarnedIncome">0원</td></tr>
+              <tr><td>예상 연간 부수입(세전)</td><td id="forecastSideGross">0원</td></tr>
+              <tr><td>예상 연간 부수입 과세표준 기초</td><td id="forecastSideTaxable">0원</td></tr>
+              <tr><td>예상 연간 종합소득세</td><td id="forecastIncomeTax">0원</td></tr>
+              <tr><td>예상 연간 지방소득세</td><td id="forecastResidentTax">0원</td></tr>
+              <tr><td><strong>내년 5월 예상 납부세액</strong></td><td id="forecastTotalTax"><strong>0원</strong></td></tr>
+              <tr><td>월 환산 적립 권장액</td><td id="forecastMonthlyReserve">0원</td></tr>
+            </tbody>
+          </table>
+          <div class="desc" style="margin-top:10px;">
+            근로소득은 이미 원천징수된다고 보고, 여기서는 주로 블로그/강의/타운카/기타 부수입 때문에 다음 해 5월에 추가 납부할 가능성이 있는 종합소득세를 추정합니다.
+          </div>
+        </div>
+
         <div class="panel notes" style="margin-top:16px;">
           <h2 style="margin-top:0; color:var(--text);">주의 / 계산 방법</h2>
           <ul>
@@ -430,6 +448,12 @@
       const monthlySideGross = blogIncome + lectureIncome + towncarIncome + otherIncome;
       const monthlySideNet = blogCalc.monthlyNet + lectureCalc.monthlyNet + towncarCalc.monthlyNet + otherCalc.monthlyNet;
       const sideTax = blogCalc.monthlyTax + lectureCalc.monthlyTax + towncarCalc.monthlyTax + otherCalc.monthlyTax;
+      const annualEarnedIncome = mimeticsSalary + pnpSalary;
+      const annualSideGross = monthlySideGross * 12;
+      const annualSideTaxable = blogCalc.annualTaxable + lectureCalc.annualTaxable + towncarCalc.annualTaxable + otherCalc.annualTaxable;
+      const forecastIncomeTax = calcProgressiveTax(annualSideTaxable);
+      const forecastResidentTax = forecastIncomeTax * (residentTaxRate / 100);
+      const forecastTotalTax = forecastIncomeTax + forecastResidentTax;
 
       const totalNetMonthly = monthlySalaryNet + monthlySideNet;
       const totalNetYearly = totalNetMonthly * 12;
@@ -448,6 +472,13 @@
 
       $('monthlySalaryGross').textContent = fmt(monthlySalaryGross);
       $('monthlySideGross').textContent = fmt(monthlySideGross);
+      $('forecastEarnedIncome').textContent = fmt(annualEarnedIncome);
+      $('forecastSideGross').textContent = fmt(annualSideGross);
+      $('forecastSideTaxable').textContent = fmt(annualSideTaxable);
+      $('forecastIncomeTax').textContent = fmt(forecastIncomeTax);
+      $('forecastResidentTax').textContent = fmt(forecastResidentTax);
+      $('forecastTotalTax').textContent = fmt(forecastTotalTax);
+      $('forecastMonthlyReserve').textContent = fmt(forecastTotalTax / 12);
       $('sideTax').textContent = fmt(sideTax);
       $('salaryDeductionsTotal').textContent = fmt(
         mimeticsCalc.pension + pnpCalc.pension +
