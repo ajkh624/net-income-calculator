@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>월 실수령액 700만원 목표 계산기</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root {
       --bg: #0b1020;
@@ -14,8 +15,9 @@
       --line: rgba(255,255,255,0.08);
       --accent: #7ca6ff;
       --accent2: #57d0c8;
-      --warn: #ffb86b;
+      --accent3: #ffb86b;
       --good: #69e39e;
+      --warn: #ffb86b;
       --danger: #ff7d7d;
     }
     * { box-sizing: border-box; }
@@ -25,10 +27,10 @@
       background: linear-gradient(180deg, #08101e 0%, #101837 100%);
       color: var(--text);
     }
-    .wrap { max-width: 1280px; margin: 0 auto; padding: 28px 18px 56px; }
+    .wrap { max-width: 1320px; margin: 0 auto; padding: 28px 18px 56px; }
     h1 { margin: 0 0 8px; font-size: 30px; }
     .sub { color: var(--muted); line-height: 1.7; margin-bottom: 20px; }
-    .grid { display: grid; grid-template-columns: 400px 1fr; gap: 18px; }
+    .grid { display: grid; grid-template-columns: 410px 1fr; gap: 18px; }
     .panel {
       background: rgba(19, 26, 51, 0.94);
       border: 1px solid var(--line);
@@ -65,11 +67,14 @@
     .badge {
       display: inline-block; padding: 2px 8px; border-radius: 999px;
       border: 1px solid rgba(124,166,255,.25); background: rgba(124,166,255,.12); color: #dcebff;
-      font-size: 12px;
+      font-size: 12px; margin: 2px 4px 2px 0;
     }
-    @media (max-width: 980px) {
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .chart-box { height: 320px; }
+    @media (max-width: 1100px) {
       .grid { grid-template-columns: 1fr; }
       .cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .two-col { grid-template-columns: 1fr; }
     }
     @media (max-width: 640px) {
       .cards { grid-template-columns: 1fr; }
@@ -82,9 +87,8 @@
   <div class="wrap">
     <h1>나만의 월 실수령액 700만원 목표 계산기</h1>
     <div class="sub">
-      현재 근로소득 2곳(미메틱스, 피앤피)과 블로그/강의/타운카/기타 잡수익을 합산해서
-      <strong>월 실수령액</strong>을 추정하는 계산기입니다. 기본값은 재환님이 알려주신 값으로 넣어두었습니다.
-      목표는 <strong>월 실수령 700만원</strong>입니다.
+      근로소득 2곳 + 블로그 + 강의 + 타운카 + 기타 수입을 합산해 월 실수령액을 추정합니다.
+      이번 업그레이드에서는 <strong>소득원별 비용률</strong>, <strong>유형별 세금 가정</strong>, <strong>목표 달성 그래프</strong>까지 넣었습니다.
     </div>
 
     <div class="grid">
@@ -103,12 +107,11 @@
         <div class="field">
           <label for="nonTaxableMonthly">월 비과세 금액 (원)</label>
           <input id="nonTaxableMonthly" type="number" step="10000" value="200000" />
-          <div class="hint">식대 등 비과세 수당을 반영하려고 넣었습니다. 없으면 0으로 두시면 됩니다.</div>
         </div>
 
-        <div class="section-title">부수입(월 기준, 세전)</div>
+        <div class="section-title">부수입 금액 (월 기준, 원)</div>
         <div class="field">
-          <label for="blogIncome">블로그 수입 (제휴/체험단)</label>
+          <label for="blogIncome">블로그 수입</label>
           <input id="blogIncome" type="number" step="10000" value="0" />
         </div>
         <div class="field">
@@ -124,32 +127,46 @@
           <input id="otherIncome" type="number" step="10000" value="0" />
         </div>
 
-        <div class="section-title">부수입 비용/세금 가정</div>
+        <div class="section-title">소득원별 비용률 (%)</div>
         <div class="field">
-          <label for="sideExpenseRate">부수입 필요경비율 (%)</label>
-          <input id="sideExpenseRate" type="number" step="1" value="20" />
-          <div class="hint">블로그/강의/기타 사업성 수입의 비용을 단순 추정합니다. 체험단은 현금 외 제공가치는 따로 반영하지 않았습니다.</div>
+          <label for="blogExpenseRate">블로그 비용률</label>
+          <input id="blogExpenseRate" type="number" step="1" value="10" />
         </div>
+        <div class="field">
+          <label for="lectureExpenseRate">강의 비용률</label>
+          <input id="lectureExpenseRate" type="number" step="1" value="15" />
+        </div>
+        <div class="field">
+          <label for="towncarExpenseRate">타운카 비용률</label>
+          <input id="towncarExpenseRate" type="number" step="1" value="35" />
+        </div>
+        <div class="field">
+          <label for="otherExpenseRate">기타 수입 비용률</label>
+          <input id="otherExpenseRate" type="number" step="1" value="20" />
+        </div>
+
+        <div class="section-title">세금 가정</div>
         <div class="field">
           <label for="residentTaxRate">지방소득세 비율 (%)</label>
           <input id="residentTaxRate" type="number" step="1" value="10" />
-          <div class="hint">소득세의 10%로 기본 설정했습니다.</div>
         </div>
-
-        <div class="section-title">목표</div>
         <div class="field">
           <label for="targetNet">목표 월 실수령액 (원)</label>
           <input id="targetNet" type="number" step="100000" value="7000000" />
         </div>
+        <div class="field">
+          <label for="simulationMax">시뮬레이션용 추가 부수입 최대값 (원/월)</label>
+          <input id="simulationMax" type="number" step="100000" value="5000000" />
+        </div>
 
         <div class="notes">
-          <strong>계산 가정</strong><br>
+          <strong>가정</strong><br>
           <span class="badge">국민연금 근로자 4.75%</span>
           <span class="badge">건강보험 근로자 3.595%</span>
           <span class="badge">장기요양 건강보험의 13.14%</span>
           <span class="badge">고용보험 근로자 0.9%</span>
           <div style="margin-top:10px;">
-            근로소득은 4대보험과 단순화한 근로소득세 추정식을 적용했습니다. 부수입은 필요경비를 뺀 뒤 종합소득세율을 단순 적용하는 방식으로 추정합니다.
+            부수입은 사업/기타소득이 혼재된 것으로 보고, 비용률을 뺀 뒤 종합소득세율을 단순 적용했습니다.
           </div>
         </div>
       </section>
@@ -159,7 +176,7 @@
           <div class="card">
             <div class="label">예상 월 실수령액</div>
             <div class="value" id="netMonthly">0원</div>
-            <div class="desc">근로 + 부수입 합산 기준</div>
+            <div class="desc">근로 + 부수입 합산</div>
           </div>
           <div class="card">
             <div class="label">목표 대비 차이</div>
@@ -172,51 +189,62 @@
             <div class="desc">월 실수령 × 12</div>
           </div>
           <div class="card">
-            <div class="label">월 추가 필요 세전수입</div>
+            <div class="label">추가 월 세전수입 필요</div>
             <div class="value" id="neededGross">0원</div>
-            <div class="desc">현재 가정 하에서 목표 도달 예상치</div>
+            <div class="desc">현재 구조 기준 목표 도달 예상치</div>
           </div>
         </div>
 
-        <div class="panel" style="margin-bottom:16px;">
-          <h2>월 기준 상세 내역</h2>
-          <table>
-            <tbody>
-              <tr><td>월 총 근로소득(세전)</td><td id="monthlySalaryGross">0원</td></tr>
-              <tr><td>월 총 부수입(세전)</td><td id="monthlySideGross">0원</td></tr>
-              <tr><td>국민연금</td><td id="pensionDeduction">0원</td></tr>
-              <tr><td>건강보험</td><td id="healthDeduction">0원</td></tr>
-              <tr><td>장기요양보험</td><td id="careDeduction">0원</td></tr>
-              <tr><td>고용보험</td><td id="employmentDeduction">0원</td></tr>
-              <tr><td>근로소득세(단순 추정)</td><td id="salaryTax">0원</td></tr>
-              <tr><td>부수입 세금(종합소득세+지방세 추정)</td><td id="sideTax">0원</td></tr>
-              <tr><td><strong>최종 월 실수령액</strong></td><td id="finalNet"><strong>0원</strong></td></tr>
-            </tbody>
-          </table>
+        <div class="two-col">
+          <div class="panel">
+            <h2>월 기준 상세 내역</h2>
+            <table>
+              <tbody>
+                <tr><td>월 총 근로소득(세전)</td><td id="monthlySalaryGross">0원</td></tr>
+                <tr><td>월 총 부수입(세전)</td><td id="monthlySideGross">0원</td></tr>
+                <tr><td>국민연금</td><td id="pensionDeduction">0원</td></tr>
+                <tr><td>건강보험</td><td id="healthDeduction">0원</td></tr>
+                <tr><td>장기요양보험</td><td id="careDeduction">0원</td></tr>
+                <tr><td>고용보험</td><td id="employmentDeduction">0원</td></tr>
+                <tr><td>근로소득세(단순 추정)</td><td id="salaryTax">0원</td></tr>
+                <tr><td>부수입 세금(종합소득세+지방세 추정)</td><td id="sideTax">0원</td></tr>
+                <tr><td><strong>최종 월 실수령액</strong></td><td id="finalNet"><strong>0원</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <h2>소득 구조 요약</h2>
+            <table>
+              <thead>
+                <tr><th>항목</th><th>월 세전</th><th>월 실수령 추정</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>미메틱스</td><td id="mimeticsGrossRow">0원</td><td id="mimeticsNetRow">0원</td></tr>
+                <tr><td>피앤피</td><td id="pnpGrossRow">0원</td><td id="pnpNetRow">0원</td></tr>
+                <tr><td>블로그</td><td id="blogGrossRow">0원</td><td id="blogNetRow">0원</td></tr>
+                <tr><td>강의</td><td id="lectureGrossRow">0원</td><td id="lectureNetRow">0원</td></tr>
+                <tr><td>타운카</td><td id="towncarGrossRow">0원</td><td id="towncarNetRow">0원</td></tr>
+                <tr><td>기타</td><td id="otherGrossRow">0원</td><td id="otherNetRow">0원</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div class="panel" style="margin-bottom:16px;">
-          <h2>소득 구조 요약</h2>
-          <table>
-            <thead>
-              <tr><th>항목</th><th>월 세전</th><th>월 실수령 추정</th></tr>
-            </thead>
-            <tbody>
-              <tr><td>미메틱스</td><td id="mimeticsGrossRow">0원</td><td id="mimeticsNetRow">0원</td></tr>
-              <tr><td>피앤피</td><td id="pnpGrossRow">0원</td><td id="pnpNetRow">0원</td></tr>
-              <tr><td>부수입 합계</td><td id="sideGrossRow">0원</td><td id="sideNetRow">0원</td></tr>
-            </tbody>
-          </table>
+        <div class="panel" style="margin-top:16px;">
+          <h2>추가 부수입 시뮬레이션</h2>
+          <div class="chart-box"><canvas id="incomeChart"></canvas></div>
+          <div class="desc">x축은 추가 부수입(월 세전), y축은 최종 월 실수령액입니다.</div>
         </div>
 
-        <div class="panel notes">
+        <div class="panel notes" style="margin-top:16px;">
           <h2 style="margin-top:0; color:var(--text);">주의 / 계산 방법</h2>
           <ul>
-            <li>근로소득 4대보험은 공식 요율에 맞춰 단순 계산했습니다.</li>
-            <li>국민연금은 연봉 상·하한, 건강보험 보수월액 기준, 간이세액표, 부양가족 수, 연말정산, 비급여 항목 등에 따라 실제와 차이가 날 수 있습니다.</li>
-            <li>여기서의 비과세는 주로 식대 등 월 비과세 수당을 의미하며, 과세대상 급여에서 제외하는 방식으로 반영했습니다.</li>
-            <li>블로그·강의·타운카·기타 수입은 사업/기타소득의 성격이 섞일 수 있어, 비용률과 종합소득세율을 단순화해서 계산했습니다.</li>
-            <li>정확한 신고용 계산이 아니라 <strong>월 700만원 목표 달성 전략을 보기 위한 의사결정용 계산기</strong>입니다.</li>
+            <li>실제 급여명세서의 근로소득세는 간이세액표, 부양가족 수, 자녀 수, 연말정산 등에 따라 달라집니다.</li>
+            <li>국민연금, 건강보험은 상·하한과 보수월액 산정 방식 때문에 실제와 차이 날 수 있습니다.</li>
+            <li>블로그·강의·타운카·기타 수입은 실제로 사업소득/기타소득/원천징수 여부가 달라질 수 있으므로 세무 신고용이 아니라 전략 수립용입니다.</li>
+            <li>비과세는 식대 등 비과세 급여를 의미하며, 의료비 비급여 같은 지출 개념은 여기서 말하는 실수령액 계산에 직접 포함하지 않았습니다.</li>
+            <li>원하시면 다음 단계로 <strong>세후 기준 월별 현금흐름표</strong>나 <strong>연 700만원 목표 로드맵</strong>도 붙일 수 있습니다.</li>
           </ul>
         </div>
       </section>
@@ -227,7 +255,6 @@
     const $ = (id) => document.getElementById(id);
     const fmt = (n) => Math.round(n).toLocaleString('ko-KR') + '원';
     const roundDown10 = (n) => Math.floor(n / 10) * 10;
-    const roundDown1 = (n) => Math.floor(n);
 
     const RATES = {
       nationalPensionEmployee: 0.0475,
@@ -248,17 +275,14 @@
     ];
 
     function getAnnualTaxBase(earnedIncome) {
-      // 매우 단순화된 근로소득공제
       let deduction;
       if (earnedIncome <= 5000000) deduction = earnedIncome * 0.7;
       else if (earnedIncome <= 15000000) deduction = 3500000 + (earnedIncome - 5000000) * 0.4;
       else if (earnedIncome <= 45000000) deduction = 7500000 + (earnedIncome - 15000000) * 0.15;
       else if (earnedIncome <= 100000000) deduction = 12000000 + (earnedIncome - 45000000) * 0.05;
       else deduction = 14750000 + (earnedIncome - 100000000) * 0.02;
-
       const personalBasic = 1500000;
-      const taxable = Math.max(0, earnedIncome - deduction - personalBasic);
-      return taxable;
+      return Math.max(0, earnedIncome - deduction - personalBasic);
     }
 
     function calcProgressiveTax(taxableIncome) {
@@ -268,44 +292,29 @@
 
     function calcSalaryNet(annualSalary, annualNonTaxable) {
       const monthlyGross = annualSalary / 12;
-      const monthlyNonTaxable = annualNonTaxable / 12;
-      const monthlyTaxableSalary = Math.max(0, monthlyGross - monthlyNonTaxable);
-
+      const monthlyTaxableSalary = Math.max(0, monthlyGross - (annualNonTaxable / 12));
       const pension = roundDown10(monthlyTaxableSalary * RATES.nationalPensionEmployee);
       const health = roundDown10(monthlyTaxableSalary * RATES.healthEmployee);
       const care = roundDown10(health * RATES.longTermCareOnHealth);
       const employment = roundDown10(monthlyTaxableSalary * RATES.employmentEmployee);
 
       const annualTaxableEarnedIncome = Math.max(0, annualSalary - annualNonTaxable);
-      const taxBase = getAnnualTaxBase(annualTaxableEarnedIncome);
-      const annualIncomeTax = calcProgressiveTax(taxBase);
+      const annualIncomeTax = calcProgressiveTax(getAnnualTaxBase(annualTaxableEarnedIncome));
       const monthlyIncomeTax = roundDown10(annualIncomeTax / 12);
-
       const netMonthly = monthlyGross - pension - health - care - employment - monthlyIncomeTax;
 
-      return {
-        monthlyGross,
-        monthlyNonTaxable,
-        monthlyTaxableSalary,
-        pension,
-        health,
-        care,
-        employment,
-        monthlyIncomeTax,
-        netMonthly,
-      };
+      return { monthlyGross, pension, health, care, employment, monthlyIncomeTax, netMonthly };
     }
 
-    function calcSideIncomeNet(monthlyGrossSide, expenseRate, residentTaxRate) {
-      const annualGross = monthlyGrossSide * 12;
+    function calcSingleSideIncome(monthlyGross, expenseRate, residentTaxRate) {
+      const annualGross = monthlyGross * 12;
       const annualExpense = annualGross * expenseRate;
       const annualTaxable = Math.max(0, annualGross - annualExpense);
       const annualIncomeTax = calcProgressiveTax(annualTaxable);
       const annualResidentTax = annualIncomeTax * (residentTaxRate / 100);
       const annualNet = annualGross - annualIncomeTax - annualResidentTax;
       return {
-        monthlyGross: monthlyGrossSide,
-        annualGross,
+        monthlyGross,
         annualTaxable,
         annualIncomeTax,
         annualResidentTax,
@@ -314,18 +323,20 @@
       };
     }
 
-    function estimateExtraGrossNeeded(targetNet, currentNet, sideExpenseRate, residentTaxRate) {
+    function estimateExtraGrossNeeded(targetNet, currentNet, avgExpenseRate, residentTaxRate) {
       if (currentNet >= targetNet) return 0;
       let low = 0;
       let high = 20000000;
       for (let i = 0; i < 50; i++) {
         const mid = (low + high) / 2;
-        const side = calcSideIncomeNet(mid, sideExpenseRate, residentTaxRate);
+        const side = calcSingleSideIncome(mid, avgExpenseRate, residentTaxRate);
         if (currentNet + side.monthlyNet >= targetNet) high = mid;
         else low = mid;
       }
       return high;
     }
+
+    let incomeChart;
 
     function render() {
       const mimeticsSalary = Number($('mimeticsSalary').value || 0);
@@ -335,29 +346,39 @@
       const lectureIncome = Number($('lectureIncome').value || 0);
       const towncarIncome = Number($('towncarIncome').value || 0);
       const otherIncome = Number($('otherIncome').value || 0);
-      const sideExpenseRate = Math.max(0, Number($('sideExpenseRate').value || 0)) / 100;
-      const residentTaxRate = Math.max(0, Number($('residentTaxRate').value || 0));
+      const blogExpenseRate = Number($('blogExpenseRate').value || 0) / 100;
+      const lectureExpenseRate = Number($('lectureExpenseRate').value || 0) / 100;
+      const towncarExpenseRate = Number($('towncarExpenseRate').value || 0) / 100;
+      const otherExpenseRate = Number($('otherExpenseRate').value || 0) / 100;
+      const residentTaxRate = Number($('residentTaxRate').value || 10);
       const targetNet = Number($('targetNet').value || 7000000);
+      const simulationMax = Number($('simulationMax').value || 5000000);
 
       const totalAnnualSalary = mimeticsSalary + pnpSalary;
       const totalNonTaxableAnnual = nonTaxableMonthly * 12;
-
       const mimeticsShare = totalAnnualSalary > 0 ? mimeticsSalary / totalAnnualSalary : 0;
       const pnpShare = totalAnnualSalary > 0 ? pnpSalary / totalAnnualSalary : 0;
 
       const mimeticsCalc = calcSalaryNet(mimeticsSalary, totalNonTaxableAnnual * mimeticsShare);
       const pnpCalc = calcSalaryNet(pnpSalary, totalNonTaxableAnnual * pnpShare);
+      const blogCalc = calcSingleSideIncome(blogIncome, blogExpenseRate, residentTaxRate);
+      const lectureCalc = calcSingleSideIncome(lectureIncome, lectureExpenseRate, residentTaxRate);
+      const towncarCalc = calcSingleSideIncome(towncarIncome, towncarExpenseRate, residentTaxRate);
+      const otherCalc = calcSingleSideIncome(otherIncome, otherExpenseRate, residentTaxRate);
 
       const monthlySalaryGross = mimeticsCalc.monthlyGross + pnpCalc.monthlyGross;
       const monthlySalaryNet = mimeticsCalc.netMonthly + pnpCalc.netMonthly;
-
       const monthlySideGross = blogIncome + lectureIncome + towncarIncome + otherIncome;
-      const sideCalc = calcSideIncomeNet(monthlySideGross, sideExpenseRate, residentTaxRate);
+      const monthlySideNet = blogCalc.monthlyNet + lectureCalc.monthlyNet + towncarCalc.monthlyNet + otherCalc.monthlyNet;
+      const sideTax = blogCalc.monthlyTax + lectureCalc.monthlyTax + towncarCalc.monthlyTax + otherCalc.monthlyTax;
 
-      const totalNetMonthly = monthlySalaryNet + sideCalc.monthlyNet;
+      const totalNetMonthly = monthlySalaryNet + monthlySideNet;
       const totalNetYearly = totalNetMonthly * 12;
       const gap = totalNetMonthly - targetNet;
-      const extraGrossNeeded = estimateExtraGrossNeeded(targetNet, totalNetMonthly, sideExpenseRate, residentTaxRate);
+      const weightedExpenseRate = monthlySideGross > 0
+        ? ((blogIncome * blogExpenseRate) + (lectureIncome * lectureExpenseRate) + (towncarIncome * towncarExpenseRate) + (otherIncome * otherExpenseRate)) / monthlySideGross
+        : 0.2;
+      const extraGrossNeeded = estimateExtraGrossNeeded(targetNet, totalNetMonthly, weightedExpenseRate, residentTaxRate);
 
       $('netMonthly').textContent = fmt(totalNetMonthly);
       $('netYearly').textContent = fmt(totalNetYearly);
@@ -373,19 +394,94 @@
       $('careDeduction').textContent = fmt(mimeticsCalc.care + pnpCalc.care);
       $('employmentDeduction').textContent = fmt(mimeticsCalc.employment + pnpCalc.employment);
       $('salaryTax').textContent = fmt(mimeticsCalc.monthlyIncomeTax + pnpCalc.monthlyIncomeTax);
-      $('sideTax').textContent = fmt(sideCalc.monthlyTax);
+      $('sideTax').textContent = fmt(sideTax);
       $('finalNet').textContent = fmt(totalNetMonthly);
 
       $('mimeticsGrossRow').textContent = fmt(mimeticsCalc.monthlyGross);
       $('mimeticsNetRow').textContent = fmt(mimeticsCalc.netMonthly);
       $('pnpGrossRow').textContent = fmt(pnpCalc.monthlyGross);
       $('pnpNetRow').textContent = fmt(pnpCalc.netMonthly);
-      $('sideGrossRow').textContent = fmt(sideCalc.monthlyGross);
-      $('sideNetRow').textContent = fmt(sideCalc.monthlyNet);
+      $('blogGrossRow').textContent = fmt(blogCalc.monthlyGross);
+      $('blogNetRow').textContent = fmt(blogCalc.monthlyNet);
+      $('lectureGrossRow').textContent = fmt(lectureCalc.monthlyGross);
+      $('lectureNetRow').textContent = fmt(lectureCalc.monthlyNet);
+      $('towncarGrossRow').textContent = fmt(towncarCalc.monthlyGross);
+      $('towncarNetRow').textContent = fmt(towncarCalc.monthlyNet);
+      $('otherGrossRow').textContent = fmt(otherCalc.monthlyGross);
+      $('otherNetRow').textContent = fmt(otherCalc.monthlyNet);
+
+      const labels = [];
+      const netSeries = [];
+      const targetSeries = [];
+      const step = simulationMax / 20;
+      for (let extra = 0; extra <= simulationMax + 1; extra += step) {
+        const extraCalc = calcSingleSideIncome(extra, weightedExpenseRate, residentTaxRate);
+        labels.push(Math.round(extra / 10000).toLocaleString('ko-KR') + '만');
+        netSeries.push(Math.round(totalNetMonthly + extraCalc.monthlyNet));
+        targetSeries.push(targetNet);
+      }
+
+      incomeChart?.destroy();
+      incomeChart = new Chart(document.getElementById('incomeChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: '예상 월 실수령액',
+              data: netSeries,
+              borderColor: '#57d0c8',
+              backgroundColor: 'rgba(87,208,200,.12)',
+              borderWidth: 3,
+              pointRadius: 0,
+              tension: .2,
+              fill: true,
+            },
+            {
+              label: '목표 월 실수령액',
+              data: targetSeries,
+              borderColor: '#ffb86b',
+              borderWidth: 2,
+              pointRadius: 0,
+              tension: 0,
+              borderDash: [8, 6],
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: { labels: { color: '#eef3ff' } },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString('ko-KR')}원`
+              }
+            }
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '추가 부수입(월 세전)', color: '#a8b4d9' },
+              ticks: { color: '#d6e1ff' },
+              grid: { color: 'rgba(255,255,255,.06)' }
+            },
+            y: {
+              title: { display: true, text: '월 실수령액', color: '#a8b4d9' },
+              ticks: {
+                color: '#d6e1ff',
+                callback: (value) => Math.round(value).toLocaleString('ko-KR') + '원'
+              },
+              grid: { color: 'rgba(255,255,255,.06)' }
+            }
+          }
+        }
+      });
     }
 
     [
-      'mimeticsSalary','pnpSalary','nonTaxableMonthly','blogIncome','lectureIncome','towncarIncome','otherIncome','sideExpenseRate','residentTaxRate','targetNet'
+      'mimeticsSalary','pnpSalary','nonTaxableMonthly','blogIncome','lectureIncome','towncarIncome','otherIncome',
+      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);
