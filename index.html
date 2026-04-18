@@ -201,17 +201,47 @@
 
         <div class="two-col">
           <div class="panel">
-            <h2>월 기준 상세 내역</h2>
+            <h2>미메틱스 월 기준 상세 내역</h2>
             <table>
               <tbody>
-                <tr><td>월 총 근로소득(세전)</td><td id="monthlySalaryGross">0원</td></tr>
+                <tr><td>월 세전급여</td><td id="mimeticsGrossDetail">0원</td></tr>
+                <tr><td>월 비과세</td><td id="mimeticsNonTaxableDetail">0원</td></tr>
+                <tr><td>국민연금</td><td id="mimeticsPensionDetail">0원</td></tr>
+                <tr><td>건강보험</td><td id="mimeticsHealthDetail">0원</td></tr>
+                <tr><td>장기요양보험</td><td id="mimeticsCareDetail">0원</td></tr>
+                <tr><td>고용보험</td><td id="mimeticsEmploymentDetail">0원</td></tr>
+                <tr><td>근로소득세(단순 추정)</td><td id="mimeticsTaxDetail">0원</td></tr>
+                <tr><td><strong>월 실수령액</strong></td><td id="mimeticsNetDetail"><strong>0원</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <h2>피앤피 월 기준 상세 내역</h2>
+            <table>
+              <tbody>
+                <tr><td>월 세전급여</td><td id="pnpGrossDetail">0원</td></tr>
+                <tr><td>월 비과세</td><td id="pnpNonTaxableDetail">0원</td></tr>
+                <tr><td>국민연금</td><td id="pnpPensionDetail">0원</td></tr>
+                <tr><td>건강보험</td><td id="pnpHealthDetail">0원</td></tr>
+                <tr><td>장기요양보험</td><td id="pnpCareDetail">0원</td></tr>
+                <tr><td>고용보험</td><td id="pnpEmploymentDetail">0원</td></tr>
+                <tr><td>근로소득세(단순 추정)</td><td id="pnpTaxDetail">0원</td></tr>
+                <tr><td><strong>월 실수령액</strong></td><td id="pnpNetDetail"><strong>0원</strong></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="two-col" style="margin-top:16px;">
+          <div class="panel">
+            <h2>부수입 및 전체 합산</h2>
+            <table>
+              <tbody>
                 <tr><td>월 총 부수입(세전)</td><td id="monthlySideGross">0원</td></tr>
-                <tr><td>국민연금</td><td id="pensionDeduction">0원</td></tr>
-                <tr><td>건강보험</td><td id="healthDeduction">0원</td></tr>
-                <tr><td>장기요양보험</td><td id="careDeduction">0원</td></tr>
-                <tr><td>고용보험</td><td id="employmentDeduction">0원</td></tr>
-                <tr><td>근로소득세(단순 추정)</td><td id="salaryTax">0원</td></tr>
                 <tr><td>부수입 세금(종합소득세+지방세 추정)</td><td id="sideTax">0원</td></tr>
+                <tr><td>월 총 근로소득(세전)</td><td id="monthlySalaryGross">0원</td></tr>
+                <tr><td>4대보험+근로세 합계</td><td id="salaryDeductionsTotal">0원</td></tr>
                 <tr><td><strong>최종 월 실수령액</strong></td><td id="finalNet"><strong>0원</strong></td></tr>
               </tbody>
             </table>
@@ -389,13 +419,33 @@
 
       $('monthlySalaryGross').textContent = fmt(monthlySalaryGross);
       $('monthlySideGross').textContent = fmt(monthlySideGross);
-      $('pensionDeduction').textContent = fmt(mimeticsCalc.pension + pnpCalc.pension);
-      $('healthDeduction').textContent = fmt(mimeticsCalc.health + pnpCalc.health);
-      $('careDeduction').textContent = fmt(mimeticsCalc.care + pnpCalc.care);
-      $('employmentDeduction').textContent = fmt(mimeticsCalc.employment + pnpCalc.employment);
-      $('salaryTax').textContent = fmt(mimeticsCalc.monthlyIncomeTax + pnpCalc.monthlyIncomeTax);
       $('sideTax').textContent = fmt(sideTax);
+      $('salaryDeductionsTotal').textContent = fmt(
+        mimeticsCalc.pension + pnpCalc.pension +
+        mimeticsCalc.health + pnpCalc.health +
+        mimeticsCalc.care + pnpCalc.care +
+        mimeticsCalc.employment + pnpCalc.employment +
+        mimeticsCalc.monthlyIncomeTax + pnpCalc.monthlyIncomeTax
+      );
       $('finalNet').textContent = fmt(totalNetMonthly);
+
+      $('mimeticsGrossDetail').textContent = fmt(mimeticsCalc.monthlyGross);
+      $('mimeticsNonTaxableDetail').textContent = fmt(mimeticsNonTaxableMonthly);
+      $('mimeticsPensionDetail').textContent = fmt(mimeticsCalc.pension);
+      $('mimeticsHealthDetail').textContent = fmt(mimeticsCalc.health);
+      $('mimeticsCareDetail').textContent = fmt(mimeticsCalc.care);
+      $('mimeticsEmploymentDetail').textContent = fmt(mimeticsCalc.employment);
+      $('mimeticsTaxDetail').textContent = fmt(mimeticsCalc.monthlyIncomeTax);
+      $('mimeticsNetDetail').textContent = fmt(mimeticsCalc.netMonthly);
+
+      $('pnpGrossDetail').textContent = fmt(pnpCalc.monthlyGross);
+      $('pnpNonTaxableDetail').textContent = fmt(pnpNonTaxableMonthly);
+      $('pnpPensionDetail').textContent = fmt(pnpCalc.pension);
+      $('pnpHealthDetail').textContent = fmt(pnpCalc.health);
+      $('pnpCareDetail').textContent = fmt(pnpCalc.care);
+      $('pnpEmploymentDetail').textContent = fmt(pnpCalc.employment);
+      $('pnpTaxDetail').textContent = fmt(pnpCalc.monthlyIncomeTax);
+      $('pnpNetDetail').textContent = fmt(pnpCalc.netMonthly);
 
       $('mimeticsGrossRow').textContent = fmt(mimeticsCalc.monthlyGross);
       $('mimeticsNetRow').textContent = fmt(mimeticsCalc.netMonthly);
