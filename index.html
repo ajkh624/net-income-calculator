@@ -318,8 +318,8 @@
               <tr><td>예상 연간 근로소득(세전)</td><td id="forecastEarnedIncome">0원</td></tr>
               <tr><td>예상 연간 부수입(세전)</td><td id="forecastSideGross">0원</td></tr>
               <tr><td>예상 연간 부수입 과세표준 기초</td><td id="forecastSideTaxable">0원</td></tr>
-              <tr><td>기본공제/추가공제 반영 후 과세표준</td><td id="forecastDeductedTaxable">0원</td></tr>
-              <tr><td>예상 연간 종합소득세</td><td id="forecastIncomeTax">0원</td></tr>
+              <tr><td>기본공제/추가공제 반영 후 합산 과세표준</td><td id="forecastDeductedTaxable">0원</td></tr>
+              <tr><td>예상 부수입 추가 종합소득세 (한계세율)</td><td id="forecastIncomeTax">0원</td></tr>
               <tr><td>예상 연간 지방소득세</td><td id="forecastResidentTax">0원</td></tr>
               <tr><td>기납부세액/원천징수세액</td><td id="forecastPrepaidTax">0원</td></tr>
               <tr><td><strong>내년 5월 예상 추가 납부세액</strong></td><td id="forecastTotalTax"><strong>0원</strong></td></tr>
@@ -471,10 +471,21 @@
       const monthlySideNet = blogCalc.monthlyNet + lectureCalc.monthlyNet + towncarCalc.monthlyNet + otherCalc.monthlyNet;
       const sideTax = blogCalc.monthlyTax + lectureCalc.monthlyTax + towncarCalc.monthlyTax + otherCalc.monthlyTax;
       const annualEarnedIncome = mimeticsSalary + pnpSalary;
+      const annualNonTaxableTotal = (mimeticsNonTaxableMonthly + pnpNonTaxableMonthly) * 12;
+      const annualTaxableEarned = Math.max(0, annualEarnedIncome - annualNonTaxableTotal);
+      // 근로소득 과세표준 (근로소득공제 + 본인 인적공제 150만 반영 — getAnnualTaxBase 내부 처리)
+      const earnedTaxBase = getAnnualTaxBase(annualTaxableEarned);
       const annualSideGross = monthlySideGross * 12;
       const annualSideTaxable = blogCalc.annualTaxable + lectureCalc.annualTaxable + towncarCalc.annualTaxable + otherCalc.annualTaxable;
-      const forecastDeductedTaxable = Math.max(0, annualSideTaxable - personalDeduction - pensionSavingDeduction - otherDeduction);
-      const forecastIncomeTax = calcProgressiveTax(forecastDeductedTaxable);
+      // 부수입에 적용할 추가공제 (연금저축/IRP 등). 기본 인적공제는 근로 쪽에서 이미 차감되므로 중복공제 금지.
+      const extraDeductionsForSide = pensionSavingDeduction + otherDeduction;
+      // 합산 과세표준 (근로 + 부수입 - 부수입측 추가공제)
+      const combinedTaxBase = Math.max(0, earnedTaxBase + annualSideTaxable - extraDeductionsForSide);
+      const forecastDeductedTaxable = combinedTaxBase;
+      // 한계세율 방식: 합산 세액 - 근로만 세액 = 부수입 때문에 추가로 내야 할 종합소득세
+      const taxOnCombined = calcProgressiveTax(combinedTaxBase);
+      const taxOnEarnedOnly = calcProgressiveTax(earnedTaxBase);
+      const forecastIncomeTax = Math.max(0, taxOnCombined - taxOnEarnedOnly);
       const forecastResidentTax = forecastIncomeTax * (residentTaxRate / 100);
       const forecastTotalTax = Math.max(0, forecastIncomeTax + forecastResidentTax - prepaidSideTax);
 
