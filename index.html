@@ -534,9 +534,9 @@
       // 세액공제 (근로 비율 기준)
       const earnedShare = combinedTaxBase > 0 ? Math.min(1, earnedTaxBase / combinedTaxBase) : 1;
       const salaryAttributableTax = grossIncomeTax * earnedShare;
-      const earnedTaxCredit = calcEarnedIncomeTaxCredit(salaryAttributableTax, annualEarnedIncome);
-      const pensionTaxCredit = calcPensionTaxCredit(pensionSavingPayment, annualEarnedIncome);
-      const monthlyRentTaxCredit = calcMonthlyRentTaxCredit(monthlyRent * 12, annualEarnedIncome);
+      const earnedTaxCredit = calcEarnedIncomeTaxCredit(salaryAttributableTax, annualTaxableEarned);
+      const pensionTaxCredit = calcPensionTaxCredit(pensionSavingPayment, annualTaxableEarned);
+      const monthlyRentTaxCredit = calcMonthlyRentTaxCredit(monthlyRent * 12, annualTaxableEarned);
       const smeYouthCredit = calcSmeYouthDiscount(salaryAttributableTax, smeYouthDiscount);
       const standardTaxCredit = 130000;
       const totalTaxCredit = earnedTaxCredit + pensionTaxCredit + monthlyRentTaxCredit + smeYouthCredit + standardTaxCredit;
