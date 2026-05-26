@@ -185,6 +185,14 @@
           <input id="pensionSavingDeduction" type="number" step="100000" value="9000000" />
         </div>
         <div class="field">
+          <label for="smeYouthDiscount">중소기업 청년 소득세 감면율 (%, 만15~34세 90%, 한도 200만)</label>
+          <input id="smeYouthDiscount" type="number" step="10" min="0" max="90" value="90" />
+        </div>
+        <div class="field">
+          <label for="monthlyRent">월세 납입액 (원/월, 무주택세대주·총급여 8천 이하만 공제)</label>
+          <input id="monthlyRent" type="number" step="10000" value="0" />
+        </div>
+        <div class="field">
           <label for="otherDeduction">기타 추가 공제액 (원)</label>
           <input id="otherDeduction" type="number" step="100000" value="0" />
         </div>
@@ -320,7 +328,7 @@
               <tr><td>예상 연간 부수입 과세표준 기초</td><td id="forecastSideTaxable">0원</td></tr>
               <tr><td>기본공제/4대보험/추가공제 반영 후 합산 과세표준</td><td id="forecastDeductedTaxable">0원</td></tr>
               <tr><td>산출세액 (공제 전, 종합소득세)</td><td id="forecastGrossIncomeTax">0원</td></tr>
-              <tr><td>세액공제 합계 (근로+연금저축+표준)</td><td id="forecastTaxCredit">0원</td></tr>
+              <tr><td>세액공제 합계 (근로+연금저축+월세+중기청년+표준)</td><td id="forecastTaxCredit">0원</td></tr>
               <tr><td>총 산출세액 (세액공제 후, 결정세액)</td><td id="forecastIncomeTax">0원</td></tr>
               <tr><td>총 산출 지방소득세</td><td id="forecastResidentTax">0원</td></tr>
               <tr><td>기납부세액 (근로 원천징수 + 부수입 기납부)</td><td id="forecastPrepaidTax">0원</td></tr>
@@ -405,6 +413,21 @@
       return eligible * rate;
     }
 
+    // 월세액 세액공제 (총급여 8천만 이하): 5,500만 이하 17%, 5,500~8,000만 15%; 월세 한도 연 1,000만
+    function calcMonthlyRentTaxCredit(annualRent, totalSalary) {
+      if (totalSalary > 80000000) return 0;
+      const eligible = Math.min(annualRent, 10000000);
+      const rate = totalSalary <= 55000000 ? 0.17 : 0.15;
+      return eligible * rate;
+    }
+
+    // 중소기업 청년 소득세 감면 (만15~34세, 5년간, 감면율 90%; 한도 연 200만)
+    function calcSmeYouthDiscount(salaryAttributableTax, discountRate) {
+      if (discountRate <= 0) return 0;
+      const raw = salaryAttributableTax * (discountRate / 100);
+      return Math.min(raw, 2000000);
+    }
+
     function calcSalaryNet(annualSalary, annualNonTaxable, taxMode = 'auto', manualTax = 0) {
       const monthlyGross = annualSalary / 12;
       const monthlyTaxableSalary = Math.max(0, monthlyGross - (annualNonTaxable / 12));
@@ -475,6 +498,8 @@
       const dependents = Math.max(0, Number($('dependents').value || 0));
       const personalBasic = 1500000 * (1 + dependents);
       const pensionSavingPayment = Number($('pensionSavingDeduction').value || 0);
+      const smeYouthDiscount = Math.max(0, Math.min(90, Number($('smeYouthDiscount').value || 0)));
+      const monthlyRent = Number($('monthlyRent').value || 0);
       const otherDeduction = Number($('otherDeduction').value || 0);
       const prepaidSideTax = Number($('prepaidSideTax').value || 0);
       const targetNet = Number($('targetNet').value || 7000000);
@@ -511,8 +536,10 @@
       const salaryAttributableTax = grossIncomeTax * earnedShare;
       const earnedTaxCredit = calcEarnedIncomeTaxCredit(salaryAttributableTax, annualEarnedIncome);
       const pensionTaxCredit = calcPensionTaxCredit(pensionSavingPayment, annualEarnedIncome);
+      const monthlyRentTaxCredit = calcMonthlyRentTaxCredit(monthlyRent * 12, annualEarnedIncome);
+      const smeYouthCredit = calcSmeYouthDiscount(salaryAttributableTax, smeYouthDiscount);
       const standardTaxCredit = 130000;
-      const totalTaxCredit = earnedTaxCredit + pensionTaxCredit + standardTaxCredit;
+      const totalTaxCredit = earnedTaxCredit + pensionTaxCredit + monthlyRentTaxCredit + smeYouthCredit + standardTaxCredit;
       const forecastIncomeTax = Math.max(0, grossIncomeTax - totalTaxCredit);
       const forecastResidentTax = forecastIncomeTax * (residentTaxRate / 100);
       // 기납부세액: 근로 원천징수 합계 (소득세 + 지방세 10%) + 사용자가 입력한 부수입 기납부
@@ -668,7 +695,7 @@
 
     [
       'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','mimeticsTaxMode','mimeticsManualTax','pnpNonTaxableMonthly','pnpTaxMode','pnpManualTax','blogIncome','lectureIncome','towncarIncome','otherIncome',
-      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','otherDeduction','prepaidSideTax','targetNet','simulationMax'
+      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','otherDeduction','prepaidSideTax','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);
