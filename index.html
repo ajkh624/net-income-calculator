@@ -196,6 +196,27 @@
           <label for="otherDeduction">기타 추가 공제액 (원)</label>
           <input id="otherDeduction" type="number" step="100000" value="0" />
         </div>
+
+        <div class="section-title">신용카드 등 사용액 (연 기준, 원)</div>
+        <div class="notes" style="margin:4px 0 10px 0;">
+          총급여 25% 초과분부터 공제됩니다. 한도: 총급여 7천 이하 300만, 7천~1.2억 250만, 1.2억 초과 200만 (+ 전통시장·대중교통 각 100만 추가).
+        </div>
+        <div class="field">
+          <label for="creditCardUsage">신용카드 사용액 (15%)</label>
+          <input id="creditCardUsage" type="number" step="100000" value="0" />
+        </div>
+        <div class="field">
+          <label for="checkCardUsage">체크카드·현금영수증 사용액 (30%)</label>
+          <input id="checkCardUsage" type="number" step="100000" value="0" />
+        </div>
+        <div class="field">
+          <label for="marketUsage">전통시장 사용액 (40%)</label>
+          <input id="marketUsage" type="number" step="100000" value="0" />
+        </div>
+        <div class="field">
+          <label for="transitUsage">대중교통 사용액 (40%)</label>
+          <input id="transitUsage" type="number" step="100000" value="0" />
+        </div>
         <div class="field">
           <label for="prepaidSideTax">이미 낸 부수입 관련 기납부세액/원천징수세액 (원)</label>
           <input id="prepaidSideTax" type="number" step="10000" value="0" />
@@ -430,6 +451,32 @@
       return Math.min(raw, 2000000);
     }
 
+    // 신용카드 등 사용금액 소득공제
+    // 총급여 25% 초과분에 대해 항목별 공제율(신용 15%, 체크·현금 30%, 전통시장·대중교통 40%) 적용
+    // 한도: 총급여 7천 이하 300만 / 7천~1.2억 250만 / 1.2억 초과 200만, + 전통시장 100만 + 대중교통 100만
+    function calcCreditCardDeduction(usage, totalSalary) {
+      const credit = Math.max(0, Number(usage.credit || 0));
+      const check = Math.max(0, Number(usage.check || 0));
+      const market = Math.max(0, Number(usage.market || 0));
+      const transit = Math.max(0, Number(usage.transit || 0));
+      const totalUse = credit + check + market + transit;
+      const threshold = totalSalary * 0.25;
+      if (totalUse <= threshold) return 0;
+      // 초과분을 사용액 비율로 안분 후 항목별 공제율 적용
+      const ratio = (totalUse - threshold) / totalUse;
+      const creditDed = credit * ratio * 0.15;
+      const checkDed = check * ratio * 0.30;
+      const marketDed = market * ratio * 0.40;
+      const transitDed = transit * ratio * 0.40;
+      let baseLimit;
+      if (totalSalary <= 70000000) baseLimit = 3000000;
+      else if (totalSalary <= 120000000) baseLimit = 2500000;
+      else baseLimit = 2000000;
+      const baseDed = Math.min(creditDed + checkDed, baseLimit);
+      const extraDed = Math.min(marketDed, 1000000) + Math.min(transitDed, 1000000);
+      return baseDed + extraDed;
+    }
+
     function calcSalaryNet(annualSalary, annualNonTaxable, taxMode = 'auto', manualTax = 0) {
       const monthlyGross = annualSalary / 12;
       const monthlyTaxableSalary = Math.max(0, monthlyGross - (annualNonTaxable / 12));
@@ -504,6 +551,10 @@
       const smeYouthDiscount = Math.max(0, Math.min(90, Number($('smeYouthDiscount').value || 0)));
       const monthlyRent = Number($('monthlyRent').value || 0);
       const otherDeduction = Number($('otherDeduction').value || 0);
+      const creditCardUsage = Number($('creditCardUsage').value || 0);
+      const checkCardUsage = Number($('checkCardUsage').value || 0);
+      const marketUsage = Number($('marketUsage').value || 0);
+      const transitUsage = Number($('transitUsage').value || 0);
       const prepaidSideTax = Number($('prepaidSideTax').value || 0);
       const targetNet = Number($('targetNet').value || 7000000);
       const simulationMax = Number($('simulationMax').value || 5000000);
@@ -530,7 +581,11 @@
       const earnedTaxBase = getAnnualTaxBase(annualTaxableEarned, annualInsuranceDeduction, personalBasic);
       const annualSideGross = monthlySideGross * 12;
       const annualSideTaxable = blogCalc.annualTaxable + lectureCalc.annualTaxable + towncarCalc.annualTaxable + otherCalc.annualTaxable;
-      const combinedTaxBase = Math.max(0, earnedTaxBase + annualSideTaxable - otherDeduction);
+      const creditCardDeduction = calcCreditCardDeduction(
+        { credit: creditCardUsage, check: checkCardUsage, market: marketUsage, transit: transitUsage },
+        annualTaxableEarned
+      );
+      const combinedTaxBase = Math.max(0, earnedTaxBase + annualSideTaxable - otherDeduction - creditCardDeduction);
       const forecastDeductedTaxable = combinedTaxBase;
       // 산출세액 (공제 전)
       const grossIncomeTax = calcProgressiveTax(combinedTaxBase);
@@ -698,7 +753,7 @@
 
     [
       'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','mimeticsTaxMode','mimeticsManualTax','pnpNonTaxableMonthly','pnpTaxMode','pnpManualTax','blogIncome','lectureIncome','towncarIncome','otherIncome',
-      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','otherDeduction','prepaidSideTax','targetNet','simulationMax'
+      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','otherDeduction','creditCardUsage','checkCardUsage','marketUsage','transitUsage','prepaidSideTax','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);
