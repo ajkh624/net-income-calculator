@@ -452,7 +452,7 @@
     }
 
     // 신용카드 등 사용금액 소득공제
-    // 총급여 25% 초과분에 대해 항목별 공제율(신용 15%, 체크·현금 30%, 전통시장·대중교통 40%) 적용
+    // 최저사용금액(총급여 25%)을 공제율 낮은 항목부터 순차 차감(신용 15% → 체크·현금 30% → 전통시장·대중교통 40%)
     // 한도: 총급여 7천 이하 300만 / 7천~1.2억 250만 / 1.2억 초과 200만, + 전통시장 100만 + 대중교통 100만
     function calcCreditCardDeduction(usage, totalSalary) {
       const credit = Math.max(0, Number(usage.credit || 0));
@@ -462,12 +462,16 @@
       const totalUse = credit + check + market + transit;
       const threshold = totalSalary * 0.25;
       if (totalUse <= threshold) return 0;
-      // 초과분을 사용액 비율로 안분 후 항목별 공제율 적용
-      const ratio = (totalUse - threshold) / totalUse;
-      const creditDed = credit * ratio * 0.15;
-      const checkDed = check * ratio * 0.30;
-      const marketDed = market * ratio * 0.40;
-      const transitDed = transit * ratio * 0.40;
+      // 최저사용금액을 공제율 낮은 순서로 차감: 신용카드 → 체크·현금 → 전통시장·대중교통
+      let rem = threshold;
+      const creditUse = Math.max(0, credit - rem); rem = Math.max(0, rem - credit);
+      const checkUse = Math.max(0, check - rem); rem = Math.max(0, rem - check);
+      const marketUse = Math.max(0, market - rem); rem = Math.max(0, rem - market);
+      const transitUse = Math.max(0, transit - rem);
+      const creditDed = creditUse * 0.15;
+      const checkDed = checkUse * 0.30;
+      const marketDed = marketUse * 0.40;
+      const transitDed = transitUse * 0.40;
       let baseLimit;
       if (totalSalary <= 70000000) baseLimit = 3000000;
       else if (totalSalary <= 120000000) baseLimit = 2500000;
@@ -596,7 +600,10 @@
       const pensionTaxCredit = calcPensionTaxCredit(pensionSavingPayment, annualTaxableEarned);
       const monthlyRentTaxCredit = calcMonthlyRentTaxCredit(monthlyRent * 12, annualTaxableEarned);
       const smeYouthCredit = calcSmeYouthDiscount(salaryAttributableTax, smeYouthDiscount);
-      const standardTaxCredit = 130000;
+      // 표준세액공제(13만원)는 특별소득공제·특별세액공제·월세세액공제를 하나도 신청하지 않은 경우에만 적용.
+      // 이 계산기는 4대보험료(특별소득공제)와 월세세액공제를 반영하므로, 해당 공제가 있으면 표준세액공제는 배제(0).
+      const usesSpecialDeduction = annualInsuranceDeduction > 0 || monthlyRentTaxCredit > 0;
+      const standardTaxCredit = usesSpecialDeduction ? 0 : 130000;
       const totalTaxCredit = earnedTaxCredit + pensionTaxCredit + monthlyRentTaxCredit + smeYouthCredit + standardTaxCredit;
       const forecastIncomeTax = Math.max(0, grossIncomeTax - totalTaxCredit);
       const forecastResidentTax = forecastIncomeTax * (residentTaxRate / 100);
