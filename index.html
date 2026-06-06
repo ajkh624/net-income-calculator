@@ -481,7 +481,7 @@
       return baseDed + extraDed;
     }
 
-    function calcSalaryNet(annualSalary, annualNonTaxable, taxMode = 'auto', manualTax = 0) {
+    function calcSalaryNet(annualSalary, annualNonTaxable, taxMode = 'auto', manualTax = 0, personalBasic = 1500000) {
       const monthlyGross = annualSalary / 12;
       const monthlyTaxableSalary = Math.max(0, monthlyGross - (annualNonTaxable / 12));
       const pensionBase = Math.min(monthlyTaxableSalary, RATES.nationalPensionCapMonthly);
@@ -491,7 +491,13 @@
       const employment = roundDown10(monthlyTaxableSalary * RATES.employmentEmployee);
 
       const annualTaxableEarnedIncome = Math.max(0, annualSalary - annualNonTaxable);
-      const annualIncomeTax = calcProgressiveTax(getAnnualTaxBase(annualTaxableEarnedIncome));
+      // 매월 원천징수 소득세 근사: 간이세액표는 4대보험 소득공제·부양가족 인적공제·근로소득세액공제를
+      // 반영한 연 결정세액을 12로 나눈 수준이다. (연금저축·월세 등 연말정산 전용 공제는 제외)
+      const annualInsuranceDeduction = (pension + health + care + employment) * 12;
+      const annualTaxBase = getAnnualTaxBase(annualTaxableEarnedIncome, annualInsuranceDeduction, personalBasic);
+      const grossIncomeTax = calcProgressiveTax(annualTaxBase);
+      const earnedTaxCredit = calcEarnedIncomeTaxCredit(grossIncomeTax, annualTaxableEarnedIncome);
+      const annualIncomeTax = Math.max(0, grossIncomeTax - earnedTaxCredit);
       const autoMonthlyIncomeTax = roundDown10(annualIncomeTax / 12);
       const monthlyIncomeTax = taxMode === 'manual' ? Number(manualTax || 0) : autoMonthlyIncomeTax;
       const netMonthly = monthlyGross - pension - health - care - employment - monthlyIncomeTax;
@@ -563,8 +569,8 @@
       const targetNet = Number($('targetNet').value || 7000000);
       const simulationMax = Number($('simulationMax').value || 5000000);
 
-      const mimeticsCalc = calcSalaryNet(mimeticsSalary, mimeticsNonTaxableMonthly * 12, mimeticsTaxMode, mimeticsManualTax);
-      const pnpCalc = calcSalaryNet(pnpSalary, pnpNonTaxableMonthly * 12, pnpTaxMode, pnpManualTax);
+      const mimeticsCalc = calcSalaryNet(mimeticsSalary, mimeticsNonTaxableMonthly * 12, mimeticsTaxMode, mimeticsManualTax, personalBasic);
+      const pnpCalc = calcSalaryNet(pnpSalary, pnpNonTaxableMonthly * 12, pnpTaxMode, pnpManualTax, 1500000);
       const blogCalc = calcSingleSideIncome(blogIncome, blogExpenseRate, residentTaxRate);
       const lectureCalc = calcSingleSideIncome(lectureIncome, lectureExpenseRate, residentTaxRate);
       const towncarCalc = calcSingleSideIncome(towncarIncome, towncarExpenseRate, residentTaxRate);
