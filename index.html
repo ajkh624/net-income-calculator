@@ -170,7 +170,7 @@
           <div class="group-body">
             <div class="field">
               <label for="mimeticsSalary">미메틱스 연봉 (원)</label>
-              <input id="mimeticsSalary" type="number" step="100000" value="85000000" />
+              <input id="mimeticsSalary" type="number" step="100000" value="72000000" />
             </div>
             <div class="field">
               <label for="pnpSalary">피앤피 연봉 (원)</label>
@@ -183,8 +183,8 @@
             <div class="field">
               <label for="mimeticsTaxMode">미메틱스 소득세 방식</label>
               <select id="mimeticsTaxMode">
-                <option value="manual" selected>실제 급여명세서 값 사용</option>
-                <option value="auto">자동 계산값 사용</option>
+                <option value="auto" selected>자동 계산값 사용</option>
+                <option value="manual">실제 급여명세서 값 사용</option>
               </select>
             </div>
             <div class="field">
@@ -276,12 +276,49 @@
               <input id="smeYouthDiscount" type="number" step="10" min="0" max="90" value="90" />
             </div>
             <div class="field">
-              <label for="monthlyRent">월세 납입액 (원/월, 무주택세대주·총급여 8천 이하만 공제)</label>
-              <input id="monthlyRent" type="number" step="10000" value="230000" />
-            </div>
-            <div class="field">
               <label for="otherDeduction">기타 추가 공제액 (원)</label>
               <input id="otherDeduction" type="number" step="100000" value="12000000" />
+            </div>
+          </div>
+        </details>
+
+        <details class="input-group" open>
+          <summary>주거 (월세 vs 전세대출)</summary>
+          <div class="group-body">
+            <div class="hint" style="margin-bottom:10px;">
+              무주택 세대주·국민주택규모(85㎡) 이하 기준. 월세는 <strong>세액공제</strong>(총급여 8천·종합소득 7천 이하, 15~17%, 연 1,000만 한도),
+              전세대출은 금융기관 차입 시 <strong>원리금 상환액 40% 소득공제</strong>(연 400만 한도, 총급여 제한 없음)입니다.
+            </div>
+            <div class="field">
+              <label for="housingMode">세금 계산에 반영할 주거 형태</label>
+              <select id="housingMode">
+                <option value="rent" selected>월세 (현재)</option>
+                <option value="jeonse">전세대출 (예정)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="monthlyRent">월세 납입액 (원/월)</label>
+              <input id="monthlyRent" type="number" step="10000" value="800000" />
+            </div>
+            <div class="field">
+              <label for="jeonseLoanAmount">전세대출 금액 (원)</label>
+              <input id="jeonseLoanAmount" type="number" step="1000000" value="200000000" />
+            </div>
+            <div class="field">
+              <label for="jeonseLoanRate">전세대출 금리 (%, 연)</label>
+              <input id="jeonseLoanRate" type="number" step="0.05" value="3.8" />
+            </div>
+            <div class="field">
+              <label for="jeonseLoanPrincipal">연간 원금 상환액 (원, 만기일시면 0)</label>
+              <input id="jeonseLoanPrincipal" type="number" step="100000" value="0" />
+            </div>
+            <div class="field">
+              <label for="jeonseOwnFunds">전세 보증금 중 자기자금 (원, 기회비용 계산용)</label>
+              <input id="jeonseOwnFunds" type="number" step="1000000" value="0" />
+            </div>
+            <div class="field">
+              <label for="opportunityRate">자기자금 기회비용 수익률 (%, 연)</label>
+              <input id="opportunityRate" type="number" step="0.1" value="3.0" />
             </div>
           </div>
         </details>
@@ -449,6 +486,28 @@
         </div>
 
         <div class="panel" style="margin-top:16px;">
+          <h2>월세 vs 전세대출 — 세금·주거비 비교</h2>
+          <div class="plan-highlight" id="housingSummary">계산 중…</div>
+          <table>
+            <thead>
+              <tr><th>항목 (연 기준)</th><th>월세</th><th>전세대출</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>주거 현금지출 (월세 / 대출이자)</td><td id="hRentCost">0원</td><td id="hLoanInterest">0원</td></tr>
+              <tr><td>자기자금 기회비용</td><td>-</td><td id="hOppCost">0원</td></tr>
+              <tr><td>공제 방식</td><td id="hRentType">세액공제</td><td>소득공제 40% (한도 400만)</td></tr>
+              <tr><td>공제 대상액</td><td id="hRentBase">0원</td><td id="hLoanBase">0원</td></tr>
+              <tr><td>공제액 (세액공제 / 소득공제)</td><td id="hRentCredit">0원</td><td id="hLoanDed">0원</td></tr>
+              <tr><td>결정세액 (소득세+지방세)</td><td id="hRentTax">0원</td><td id="hLoanTax">0원</td></tr>
+              <tr><td><strong>절세액</strong> (주거공제 없을 때 대비)</td><td id="hRentSaving"><strong>0원</strong></td><td id="hLoanSaving"><strong>0원</strong></td></tr>
+              <tr><td><strong>세후 실질 주거비</strong></td><td id="hRentNetCost"><strong>0원</strong></td><td id="hLoanNetCost"><strong>0원</strong></td></tr>
+              <tr><td>세후 실질 주거비 (월 환산)</td><td id="hRentNetMonthly">0원</td><td id="hLoanNetMonthly">0원</td></tr>
+            </tbody>
+          </table>
+          <div class="desc" style="margin-top:10px;" id="housingNote"></div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
           <h2>추가 부수입 시뮬레이션</h2>
           <div class="chart-box"><canvas id="incomeChart"></canvas></div>
           <div class="desc">x축은 추가 부수입(월 세전), y축은 최종 월 실수령액입니다. 한계세율·건보 소득월액 보험료가 반영되어 2,000만(연 과세표준 기초) 초과 구간부터 기울기가 완만해집니다.</div>
@@ -463,7 +522,7 @@
               <tr><td>예상 연간 부수입 과세표준 기초</td><td id="forecastSideTaxable">0원</td></tr>
               <tr><td>기본공제/4대보험/추가공제 반영 후 합산 과세표준</td><td id="forecastDeductedTaxable">0원</td></tr>
               <tr><td>산출세액 (공제 전, 종합소득세)</td><td id="forecastGrossIncomeTax">0원</td></tr>
-              <tr><td>세액공제 합계 (근로+연금저축+월세+중기청년+표준)</td><td id="forecastTaxCredit">0원</td></tr>
+              <tr><td>세액공제 합계 (근로+연금저축+월세+중기청년+표준) · 전세대출 소득공제는 과세표준에 반영</td><td id="forecastTaxCredit">0원</td></tr>
               <tr><td>총 산출세액 (세액공제 후, 결정세액)</td><td id="forecastIncomeTax">0원</td></tr>
               <tr><td>총 산출 지방소득세</td><td id="forecastResidentTax">0원</td></tr>
               <tr><td>기납부세액 (근로 원천징수 + 부수입 기납부)</td><td id="forecastPrepaidTax">0원</td></tr>
@@ -522,13 +581,16 @@
       { limit: Infinity, rate: 0.45, deduction: 65940000 },
     ];
 
+    function getEarnedIncomeDeduction(earnedIncome) {
+      if (earnedIncome <= 5000000) return earnedIncome * 0.7;
+      if (earnedIncome <= 15000000) return 3500000 + (earnedIncome - 5000000) * 0.4;
+      if (earnedIncome <= 45000000) return 7500000 + (earnedIncome - 15000000) * 0.15;
+      if (earnedIncome <= 100000000) return 12000000 + (earnedIncome - 45000000) * 0.05;
+      return Math.min(20000000, 14750000 + (earnedIncome - 100000000) * 0.02);
+    }
+
     function getAnnualTaxBase(earnedIncome, deductibleInsurance = 0, personalBasic = 1500000) {
-      let deduction;
-      if (earnedIncome <= 5000000) deduction = earnedIncome * 0.7;
-      else if (earnedIncome <= 15000000) deduction = 3500000 + (earnedIncome - 5000000) * 0.4;
-      else if (earnedIncome <= 45000000) deduction = 7500000 + (earnedIncome - 15000000) * 0.15;
-      else if (earnedIncome <= 100000000) deduction = 12000000 + (earnedIncome - 45000000) * 0.05;
-      else deduction = 14750000 + (earnedIncome - 100000000) * 0.02;
+      const deduction = getEarnedIncomeDeduction(earnedIncome);
       return Math.max(0, earnedIncome - deduction - personalBasic - deductibleInsurance);
     }
 
@@ -563,11 +625,17 @@
     }
 
     // 월세액 세액공제 (총급여 8천만 이하): 5,500만 이하 17%, 5,500~8,000만 15%; 월세 한도 연 1,000만
-    function calcMonthlyRentTaxCredit(annualRent, totalSalary) {
-      if (totalSalary > 80000000) return 0;
+    // 2024 개정: 총급여 8천만 이하 + 종합소득금액 7천만 이하
+    function calcMonthlyRentTaxCredit(annualRent, totalSalary, comprehensiveIncome = 0) {
+      if (totalSalary > 80000000 || comprehensiveIncome > 70000000) return 0;
       const eligible = Math.min(annualRent, 10000000);
       const rate = totalSalary <= 55000000 ? 0.17 : 0.15;
       return eligible * rate;
+    }
+
+    // 주택임차차입금 원리금상환액 소득공제 (소득세법 §52④): 상환액 40%, 연 400만 한도 (주택청약저축 공제와 합산)
+    function calcHousingLoanDeduction(annualRepayment) {
+      return Math.min(Math.max(0, annualRepayment) * 0.4, 4000000);
     }
 
     // 중소기업 청년 소득세 감면 (만15~34세, 5년간, 감면율 90%; 한도 연 200만)
@@ -743,13 +811,52 @@
         annualTaxableEarned
       );
 
-      // 합산과세: 공제는 근로분에 우선 귀속시킨 뒤, 부수입 추가로 늘어나는 산출세액을 부수입 몫으로 본다
-      const earnedOnlyTaxBase = Math.max(0, earnedTaxBase - otherDeduction - creditCardDeduction);
-      const combinedTaxBase = Math.max(0, earnedTaxBase + annualSideTaxable - otherDeduction - creditCardDeduction);
+      // 주거 입력
+      const housingMode = $('housingMode').value;
+      const jeonseLoanAmount = Number($('jeonseLoanAmount').value || 0);
+      const jeonseLoanRate = Number($('jeonseLoanRate').value || 0) / 100;
+      const jeonseLoanPrincipal = Number($('jeonseLoanPrincipal').value || 0);
+      const jeonseOwnFunds = Number($('jeonseOwnFunds').value || 0);
+      const opportunityRate = Number($('opportunityRate').value || 0) / 100;
+      const annualRent = monthlyRent * 12;
+      const annualLoanInterest = jeonseLoanAmount * jeonseLoanRate;
+      const annualLoanRepayment = annualLoanInterest + jeonseLoanPrincipal;
+      const housingLoanDeduction = calcHousingLoanDeduction(annualLoanRepayment);
+      const comprehensiveIncome = Math.max(0, annualTaxableEarned - getEarnedIncomeDeduction(annualTaxableEarned)) + annualSideTaxable;
+
+      // 주거 시나리오별 세금 계산 (rentAnnual: 월세 세액공제 대상, loanDed: 전세대출 소득공제액)
+      function computeTax(rentAnnual, loanDed) {
+        // 합산과세: 공제는 근로분에 우선 귀속시킨 뒤, 부수입 추가로 늘어나는 산출세액을 부수입 몫으로 본다
+        const earnedOnly = Math.max(0, earnedTaxBase - otherDeduction - creditCardDeduction - loanDed);
+        const combined = Math.max(0, earnedTaxBase + annualSideTaxable - otherDeduction - creditCardDeduction - loanDed);
+        const gross = calcProgressiveTax(combined);
+        const earnedShare = combined > 0 ? Math.min(1, earnedOnly / combined) : 1;
+        const salaryAttr = gross * earnedShare;
+        const earnedCredit = calcEarnedIncomeTaxCredit(salaryAttr, annualTaxableEarned);
+        const pensionCredit = calcPensionTaxCredit(pensionSavingPayment, annualTaxableEarned);
+        const rentCredit = calcMonthlyRentTaxCredit(rentAnnual, annualTaxableEarned, comprehensiveIncome);
+        const smeCredit = calcSmeYouthDiscount(salaryAttr, smeYouthDiscount);
+        // 표준세액공제(13만원)는 특별소득공제·특별세액공제·월세세액공제를 하나도 신청하지 않은 경우에만 적용.
+        const usesSpecial = annualInsuranceDeduction > 0 || rentCredit > 0 || loanDed > 0;
+        const standardCredit = usesSpecial ? 0 : 130000;
+        const totalCredit = earnedCredit + pensionCredit + rentCredit + smeCredit + standardCredit;
+        const incomeTax = Math.max(0, gross - totalCredit);
+        const resident = incomeTax * (residentTaxRate / 100);
+        const sideIncomeTax = Math.max(0, gross - calcProgressiveTax(earnedOnly));
+        return { earnedOnly, combined, gross, rentCredit, totalCredit, incomeTax, resident, total: incomeTax + resident, sideIncomeTax };
+      }
+
+      const taxNone = computeTax(0, 0);
+      const taxRent = computeTax(annualRent, 0);
+      const taxJeonse = computeTax(0, housingLoanDeduction);
+      const sel = housingMode === 'jeonse' ? taxJeonse : taxRent;
+
+      const earnedOnlyTaxBase = sel.earnedOnly;
+      const combinedTaxBase = sel.combined;
       const forecastDeductedTaxable = combinedTaxBase;
 
       // 부수입 귀속 세금 (한계세율 효과)
-      const annualSideIncomeTax = Math.max(0, calcProgressiveTax(combinedTaxBase) - calcProgressiveTax(earnedOnlyTaxBase));
+      const annualSideIncomeTax = sel.sideIncomeTax;
       const annualSideResidentTax = annualSideIncomeTax * (residentTaxRate / 100);
       const annualSideHealth = calcSideHealthAnnual(annualSideTaxable);
       const monthlySideIncomeTax = (annualSideIncomeTax + annualSideResidentTax) / 12;
@@ -767,21 +874,48 @@
       const marginalIncomeRate = getMarginalBracketRate(combinedTaxBase + 1);
       const marginalTotalRate = marginalIncomeRate * (1 + residentTaxRate / 100);
 
-      // 산출세액 (공제 전)
-      const grossIncomeTax = calcProgressiveTax(combinedTaxBase);
-      // 세액공제 (근로 비율 기준)
-      const earnedShare = combinedTaxBase > 0 ? Math.min(1, earnedOnlyTaxBase / combinedTaxBase) : 1;
-      const salaryAttributableTax = grossIncomeTax * earnedShare;
-      const earnedTaxCredit = calcEarnedIncomeTaxCredit(salaryAttributableTax, annualTaxableEarned);
-      const pensionTaxCredit = calcPensionTaxCredit(pensionSavingPayment, annualTaxableEarned);
-      const monthlyRentTaxCredit = calcMonthlyRentTaxCredit(monthlyRent * 12, annualTaxableEarned);
-      const smeYouthCredit = calcSmeYouthDiscount(salaryAttributableTax, smeYouthDiscount);
-      // 표준세액공제(13만원)는 특별소득공제·특별세액공제·월세세액공제를 하나도 신청하지 않은 경우에만 적용.
-      const usesSpecialDeduction = annualInsuranceDeduction > 0 || monthlyRentTaxCredit > 0;
-      const standardTaxCredit = usesSpecialDeduction ? 0 : 130000;
-      const totalTaxCredit = earnedTaxCredit + pensionTaxCredit + monthlyRentTaxCredit + smeYouthCredit + standardTaxCredit;
-      const forecastIncomeTax = Math.max(0, grossIncomeTax - totalTaxCredit);
-      const forecastResidentTax = forecastIncomeTax * (residentTaxRate / 100);
+      const grossIncomeTax = sel.gross;
+      const totalTaxCredit = sel.totalCredit;
+      const forecastIncomeTax = sel.incomeTax;
+      const forecastResidentTax = sel.resident;
+
+      // 월세 vs 전세대출 비교
+      const rentSaving = taxNone.total - taxRent.total;
+      const jeonseSaving = taxNone.total - taxJeonse.total;
+      const oppCost = jeonseOwnFunds * opportunityRate;
+      const rentNetCost = annualRent - rentSaving;
+      const jeonseNetCost = annualLoanInterest + oppCost - jeonseSaving;
+      $('hRentCost').textContent = fmt(annualRent);
+      $('hLoanInterest').textContent = fmt(annualLoanInterest);
+      $('hOppCost').textContent = fmt(oppCost);
+      const rentRate = annualTaxableEarned <= 55000000 ? '17%' : '15%';
+      $('hRentType').textContent = taxRent.rentCredit > 0 ? '세액공제 ' + rentRate + ' (한도 1,000만)' : '세액공제 대상 아님 (소득요건 초과)';
+      $('hRentBase').textContent = fmt(Math.min(annualRent, 10000000));
+      $('hLoanBase').textContent = fmt(annualLoanRepayment);
+      $('hRentCredit').textContent = fmt(taxRent.rentCredit) + ' (세액)';
+      $('hLoanDed').textContent = fmt(housingLoanDeduction) + ' (소득)';
+      $('hRentTax').textContent = fmt(taxRent.total);
+      $('hLoanTax').textContent = fmt(taxJeonse.total);
+      $('hRentSaving').innerHTML = '<strong>' + fmt(rentSaving) + '</strong>';
+      $('hLoanSaving').innerHTML = '<strong>' + fmt(jeonseSaving) + '</strong>';
+      $('hRentNetCost').innerHTML = '<strong>' + fmt(rentNetCost) + '</strong>';
+      $('hLoanNetCost').innerHTML = '<strong>' + fmt(jeonseNetCost) + '</strong>';
+      $('hRentNetMonthly').textContent = fmt(rentNetCost / 12);
+      $('hLoanNetMonthly').textContent = fmt(jeonseNetCost / 12);
+      const taxDiff = rentSaving - jeonseSaving;
+      const costDiff = rentNetCost - jeonseNetCost;
+      $('housingSummary').innerHTML =
+        '세금만 보면 <strong>' + (taxDiff >= 0 ? '월세가' : '전세대출이') + '</strong> 연 <strong>' + fmt(Math.abs(taxDiff)) + '</strong> 더 절세 ' +
+        '(월세 ' + fmt(rentSaving) + ' vs 전세대출 ' + fmt(jeonseSaving) + '). ' +
+        (Math.sign(taxDiff) === Math.sign(costDiff) ? '하지만' : '그리고') + ' 세후 실질 주거비는 <strong>' + (costDiff >= 0 ? '전세대출이' : '월세가') + '</strong> 연 <strong>' + fmt(Math.abs(costDiff)) +
+        '</strong> (월 ' + fmt(Math.abs(costDiff) / 12) + ') 저렴합니다.';
+      const rentWasted = Math.max(0, taxRent.rentCredit * (1 + residentTaxRate / 100) - rentSaving);
+      $('housingNote').innerHTML =
+        (rentWasted > 1000 ? '⚠️ 월세 시나리오는 결정세액이 0원까지 내려가 월세 세액공제 중 약 <strong>' + fmt(rentWasted) + '</strong>(지방세 포함)이 공제받지 못하고 소멸됩니다. ' : '') +
+        '※ 절세액 = 주거 관련 공제가 전혀 없을 때의 결정세액(소득세+지방세) − 해당 시나리오 결정세액. ' +
+        '전세대출 소득공제는 한계세율(' + (getMarginalBracketRate(taxJeonse.combined + 1) * 100).toFixed(0) + '%+지방세)만큼만 세금을 줄이고, 월세 세액공제는 세액에서 바로 빠집니다. ' +
+        '전세대출 공제는 임대차계약 입주일(또는 전입일)과 대출일 간격 3개월 이내·금융기관이 임대인 계좌로 직접 입금한 대출이어야 하며, 소득공제 한도 400만원은 주택청약종합저축 공제와 합산입니다. ' +
+        '월세 세액공제는 ' + (taxRent.rentCredit > 0 ? '현재 소득(총급여 ' + fmt(annualTaxableEarned) + ', 종합소득금액 ' + fmt(comprehensiveIncome) + ') 기준 대상입니다.' : '<strong>현재 소득 기준 대상이 아닙니다</strong> (총급여 8천만·종합소득금액 7천만 초과).');
       // 기납부세액: 근로 원천징수 합계 (소득세 + 지방세 10%) + 부수입 기납부 + 부수입 세금 자체 적립 추정분
       const annualWithheldEarnedTax = (mimeticsCalc.monthlyIncomeTax + pnpCalc.monthlyIncomeTax) * 12;
       const annualWithheldEarnedResident = annualWithheldEarnedTax * (residentTaxRate / 100);
@@ -973,7 +1107,7 @@
 
     [
       'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','mimeticsTaxMode','mimeticsManualTax','pnpNonTaxableMonthly','pnpTaxMode','pnpManualTax','blogIncome','lectureIncome','towncarIncome','otherIncome',
-      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','otherDeduction','creditCardUsage','checkCardUsage','marketUsage','transitUsage','prepaidSideTax','targetNet','simulationMax'
+      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','housingMode','jeonseLoanAmount','jeonseLoanRate','jeonseLoanPrincipal','jeonseOwnFunds','opportunityRate','otherDeduction','creditCardUsage','checkCardUsage','marketUsage','transitUsage','prepaidSideTax','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);
