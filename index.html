@@ -294,6 +294,7 @@
               <select id="housingMode">
                 <option value="rent" selected>월세 (현재)</option>
                 <option value="jeonse">전세대출 (예정)</option>
+                <option value="mixed">반전세 (월세 + 전세대출 동시)</option>
               </select>
             </div>
             <div class="field">
@@ -301,12 +302,12 @@
               <input id="monthlyRent" type="number" step="10000" value="800000" />
             </div>
             <div class="field">
-              <label for="jeonseLoanAmount">전세대출 금액 (원)</label>
+              <label for="jeonseLoanAmount">전세대출 금액 (원, 최적화 시 한도로 사용)</label>
               <input id="jeonseLoanAmount" type="number" step="1000000" value="200000000" />
             </div>
             <div class="field">
               <label for="jeonseLoanRate">전세대출 금리 (%, 연)</label>
-              <input id="jeonseLoanRate" type="number" step="0.05" value="3.8" />
+              <input id="jeonseLoanRate" type="number" step="0.05" value="4.3" />
             </div>
             <div class="field">
               <label for="jeonseLoanPrincipal">연간 원금 상환액 (원, 만기일시면 0)</label>
@@ -318,7 +319,20 @@
             </div>
             <div class="field">
               <label for="opportunityRate">자기자금 기회비용 수익률 (%, 연)</label>
-              <input id="opportunityRate" type="number" step="0.1" value="3.0" />
+              <input id="opportunityRate" type="number" step="0.1" value="5.0" />
+            </div>
+            <div class="hint" style="margin:6px 0 10px;"><strong>최적 비율 탐색</strong> (전세금 ↔ 월세 전환 · 대출 · 자기자금 조합)</div>
+            <div class="field">
+              <label for="baseDeposit">전세금 (원, 전액 전세 기준)</label>
+              <input id="baseDeposit" type="number" step="10000000" value="700000000" />
+            </div>
+            <div class="field">
+              <label for="rentPer100m">보증금 1억 감액당 월세 (원/월)</label>
+              <input id="rentPer100m" type="number" step="10000" value="400000" />
+            </div>
+            <div class="field">
+              <label for="availableAssets">투입 가능 자기자금 상한 (원)</label>
+              <input id="availableAssets" type="number" step="10000000" value="450000000" />
             </div>
           </div>
         </details>
@@ -505,6 +519,16 @@
             </tbody>
           </table>
           <div class="desc" style="margin-top:10px;" id="housingNote"></div>
+        </div>
+
+        <div class="panel" style="margin-top:16px;">
+          <h2>전세 ↔ 월세 · 대출 최적 비율</h2>
+          <div class="plan-highlight" id="optSummary">계산 중…</div>
+          <table>
+            <thead><tr><th>자기자금 기회수익률</th><th>월세 전환</th><th>전세대출</th><th>자기자금</th><th>월세(월)</th><th>세후 연 총비용</th></tr></thead>
+            <tbody id="optTable"></tbody>
+          </table>
+          <div class="desc" style="margin-top:10px;" id="optNote"></div>
         </div>
 
         <div class="panel" style="margin-top:16px;">
@@ -849,7 +873,60 @@
       const taxNone = computeTax(0, 0);
       const taxRent = computeTax(annualRent, 0);
       const taxJeonse = computeTax(0, housingLoanDeduction);
-      const sel = housingMode === 'jeonse' ? taxJeonse : taxRent;
+      const sel = housingMode === 'jeonse' ? taxJeonse
+        : housingMode === 'mixed' ? computeTax(annualRent, housingLoanDeduction) : taxRent;
+
+      // 최적 비율 탐색: 연 총비용 = 월세 + 대출이자 + 자기자금 기회비용 − 절세액 (0.1억 단위 전수탐색)
+      const baseDeposit = Number($('baseDeposit').value || 0);
+      const rentPer100m = Number($('rentPer100m').value || 0);
+      const availableAssets = Number($('availableAssets').value || 0);
+      const loanCap = jeonseLoanAmount;
+      const UNIT = 10000000;
+      const taxCache = new Map();
+      function housingTax(rentAnnual, loanAmt) {
+        const k = rentAnnual + '|' + loanAmt;
+        if (!taxCache.has(k)) taxCache.set(k, computeTax(rentAnnual, calcHousingLoanDeduction(loanAmt * jeonseLoanRate)).total);
+        return taxCache.get(k);
+      }
+      function optimize(r) {
+        let best = null;
+        const maxConv = Math.floor(baseDeposit / UNIT);
+        for (let c = 0; c <= maxConv; c++) {
+          const conv = c * UNIT;
+          const deposit = baseDeposit - conv;
+          const rentAnnual = rentPer100m * (conv / 100000000) * 12;
+          for (let l = 0; l * UNIT <= Math.min(loanCap, deposit * 0.8); l++) {
+            const loan = l * UNIT;
+            const own = deposit - loan;
+            if (own > availableAssets || own < 0) continue;
+            const saving = taxNone.total - housingTax(rentAnnual, loan);
+            const cost = rentAnnual + loan * jeonseLoanRate + own * r - saving;
+            if (!best || cost < best.cost - 1) best = { conv, loan, own, rentAnnual, saving, cost };
+          }
+        }
+        return best;
+      }
+      const rates = [...new Set([0.03, 0.04, 0.045, 0.05, 0.07, 0.10, opportunityRate].map(v => Math.round(v * 1000) / 1000))].sort((a, b) => a - b);
+      const eok = (n) => (n / 100000000).toFixed(1) + '억';
+      $('optTable').innerHTML = rates.map(r => {
+        const b = optimize(r);
+        if (!b) return '<tr><td>' + (r * 100).toFixed(1) + '%</td><td colspan="5">가능한 조합 없음 (자기자금 부족)</td></tr>';
+        const mark = Math.abs(r - opportunityRate) < 1e-9 ? ' ◀' : '';
+        return '<tr><td>' + (r * 100).toFixed(1) + '%' + mark + '</td><td>' + eok(b.conv) + '</td><td>' + eok(b.loan) + '</td><td>' + eok(b.own) +
+          '</td><td>' + fmt(b.rentAnnual / 12) + '</td><td>' + fmt(b.cost) + '</td></tr>';
+      }).join('');
+      const bestSel = optimize(opportunityRate);
+      const loanEff = jeonseLoanRate * (1 - 0.4 * getMarginalBracketRate(taxNone.combined) * (1 + residentTaxRate / 100));
+      const convRate = rentPer100m * 12 / 100000000;
+      $('optSummary').innerHTML = bestSel
+        ? '기회수익률 <strong>' + (opportunityRate * 100).toFixed(1) + '%</strong> 기준 최적: 보증금 <strong>' + eok(bestSel.own + bestSel.loan) +
+          '</strong> (자기자금 ' + eok(bestSel.own) + ' + 대출 ' + eok(bestSel.loan) + ') / 월세 <strong>' + fmt(bestSel.rentAnnual / 12) +
+          '</strong> → 세후 연 총비용 ' + fmt(bestSel.cost) + ' (월 ' + fmt(bestSel.cost / 12) + '), 절세 ' + fmt(bestSel.saving) + '.'
+        : '자기자금 상한으로는 조합이 불가능합니다.';
+      $('optNote').innerHTML = '자금별 실효 비용: 전세대출 ≈ <strong>' + (loanEff * 100).toFixed(2) + '%</strong> (금리 − 40% 소득공제 효과) · 월세 전환율 <strong>' +
+        (convRate * 100).toFixed(1) + '%</strong> (세액공제는 결정세액 한도 내에서만 효과) · 자기자금 = 기회수익률. ' +
+        '기회수익률이 대출 실효비용보다 낮으면 자기자금을 최대한 넣고, 전환율보다 높으면 월세 비중을 늘리는 게 유리합니다. ' +
+        '전세대출은 보증금의 80% 이내로 제한해 탐색합니다. 총비용 = 월세 + 대출이자 + 자기자금×기회수익률 − 절세액(현재 소득·공제 기준).';
 
       const earnedOnlyTaxBase = sel.earnedOnly;
       const combinedTaxBase = sel.combined;
@@ -1107,7 +1184,7 @@
 
     [
       'mimeticsSalary','pnpSalary','mimeticsNonTaxableMonthly','mimeticsTaxMode','mimeticsManualTax','pnpNonTaxableMonthly','pnpTaxMode','pnpManualTax','blogIncome','lectureIncome','towncarIncome','otherIncome',
-      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','housingMode','jeonseLoanAmount','jeonseLoanRate','jeonseLoanPrincipal','jeonseOwnFunds','opportunityRate','otherDeduction','creditCardUsage','checkCardUsage','marketUsage','transitUsage','prepaidSideTax','targetNet','simulationMax'
+      'blogExpenseRate','lectureExpenseRate','towncarExpenseRate','otherExpenseRate','residentTaxRate','dependents','pensionSavingDeduction','smeYouthDiscount','monthlyRent','housingMode','jeonseLoanAmount','jeonseLoanRate','jeonseLoanPrincipal','jeonseOwnFunds','opportunityRate','baseDeposit','rentPer100m','availableAssets','otherDeduction','creditCardUsage','checkCardUsage','marketUsage','transitUsage','prepaidSideTax','targetNet','simulationMax'
     ].forEach(id => {
       $(id).addEventListener('input', render);
       $(id).addEventListener('change', render);
